@@ -4,19 +4,21 @@ import torch
 from torch import optim
 from torch import nn
 import matplotlib.pyplot as plt
-import tqdm
+from tqdm import tqdm
 from torch.nn.utils import clip_grad_norm_
 class Base_model(nn.Module):
     def __init__(self, in_dim, hidden_dim, out_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.Lstm = nn.LSTM(in_dim, hidden_dim, batch_first=True, num_layers=1)
-        self.Linear = nn.Linear(hidden_dim, out_dim)
+        self.Linear1 = nn.Linear(hidden_dim, out_dim)
+        # self.Linear2 = nn.Linear(5,out_dim)
         self.out_dim = out_dim
 
     def forward(self, x):
         out, _ = self.Lstm(x)  #x.shape = (batch_size, seq_len, in_dim)
-        out = self.Linear(out) #out.shape = (batch_size, seq_len, hid_dim)
+        out = self.Linear1(out) #out.shape = (batch_size, seq_len, hid_dim)
+        # out = self.Linear2(out)
         assert(out.shape == (x.shape[0], x.shape[1], self.out_dim))
         return out
 
@@ -45,7 +47,7 @@ if __name__ == '__main__':
     little = np.min(line[:, 0])
     line = (line[:, 0]-little)/(large - little)
     data = line.reshape((-1, 1))
-    print(data.shape)
+    # print(data.shape)
 
     for i in range(1, len(path)):
         line = np.array(pd.read_csv(path[i], encoding='utf-8', header=None))
@@ -62,11 +64,11 @@ if __name__ == '__main__':
 
 
 
-    print(data[:,-1])
+    # print(data[:,-1])
 
     train_nums = int (len(data)*0.4)
     valid_nums = int(len(data)*0.6)
-    print(train_nums)
+    # print(train_nums)
 
     input_dim = 11
     hidden_dim = 20
@@ -78,7 +80,7 @@ if __name__ == '__main__':
         x_ = data[i: i+step_time, :-1]
         y_ = data[i: i+step_time, -1]
         train_set.append((x_, y_))
-    print(train_set)
+    # print(train_set)
 
     validation_set = []
     for i in range(train_nums-step_time, valid_nums-step_time):
@@ -89,11 +91,11 @@ if __name__ == '__main__':
     model = Base_model(in_dim=input_dim, hidden_dim=hidden_dim, out_dim=out_dim)
     loss = nn.MSELoss()
     optim = optim.Adam(model.parameters(), lr=0.05)
-
+    print(model)
     model.train()
     best_model = model
-    best_accurancy = 1000000
-    for epoch in range(100):
+    best_accurancy = 100
+    for epoch in tqdm(range(100)):
         for (train_, label_ ) in validation_set:
             train_ = torch.tensor(train_).float().reshape((-1, step_time, input_dim))
             label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim))
@@ -121,7 +123,7 @@ if __name__ == '__main__':
         if(vl<=best_accurancy):
             best_accurancy = vl
             best_model = model
-        print(vl)
+        # print(vl)
 
     #predict
     model.eval()
@@ -130,7 +132,7 @@ if __name__ == '__main__':
         x_ = data[i: i + step_time, :-1]
         y_ = data[i: i + step_time, -1]
         test_set.append((x_, y_))
-    print(len(test_set))
+    # print(len(test_set))
 
     pred_list = []
     real_list = []
@@ -140,9 +142,29 @@ if __name__ == '__main__':
         pred = best_model(x_test)
         pred_list.append(pred[:, -1, :].item())
         real_list.append(label_test[:, -1, :].item())
-    print(len(pred_list))
-    print(len(real_list))
+    # print(len(pred_list))
+    # print(len(real_list))
+
+    residuals = np.array(pred_list) - np.array(real_list)
+    rmse = np.sqrt(np.mean(residuals ** 2))
+    print("rmse: {}".format(rmse.item()))
     plt.plot(real_list)
     plt.plot(pred_list)
     plt.legend(("real","pred"))
     plt.show()
+
+    curr_best_model = torch.load("models/base_model.pth")
+    b_pred_list = []
+    b_real_list = []
+    for (x_test, label_test) in test_set:
+        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
+        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
+        pred = curr_best_model(x_test)
+        b_pred_list.append(pred[:, -1, :].item())
+        b_real_list.append(label_test[:, -1, :].item())
+
+    residuals1 = np.array(b_pred_list) - np.array(b_real_list)
+    rmse1= np.sqrt(np.mean(residuals1 ** 2))
+    if rmse1>rmse:
+        print("new_best")
+        torch.save(best_model, "models/base_model.pth")

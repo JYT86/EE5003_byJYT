@@ -163,7 +163,7 @@ if __name__ == '__main__':
     plt.legend("prediction")
     plt.xlabel("cycles")
     plt.ylabel("SOH")
-
+    plt.grid("on")
     plt.show()
 
 

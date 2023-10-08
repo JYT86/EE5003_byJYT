@@ -65,6 +65,8 @@ if __name__ == "__main__":
         param.requires_grad = False
         # print(name, param)
     model.Linear1 = nn.Linear(hidden_dim, out_dim)
+    for param in model.Linear1.parameters():
+        param.requires_grad = True
     # print("**************************************")
 
     # for name, param in model.named_parameters():

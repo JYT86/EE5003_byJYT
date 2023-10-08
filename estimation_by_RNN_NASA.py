@@ -125,6 +125,7 @@ if __name__ == '__main__':
     loss_func = nn.MSELoss()
     optimizier = optim.Adam(ji.parameters(), lr)
 
+
     for epoch in range(10000):
         output, hn = ji(train)
 

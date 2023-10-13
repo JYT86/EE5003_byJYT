@@ -23,15 +23,15 @@ class Base_model(nn.Module):
         return out
 
 # data load and processing
-base_file = "B0007"
-feature_type = ['_1cc_t', '_1cv_t',  '_1cc_cap', '_1cv_cap', '_1cc_e', '_1cv_e', '_1mean_cc_i', '_1a_cvcc_ct', '_1b_cvcc_ct', '_1slope_cccv_ct', '_1start_of_charge_v','_1dis_cap']
+base_file = "CS2_36"
+feature_type = ['_cc_t', '_cc_cap', '_cc_e', '_slope_cccv_ct', '_start_of_charge_v', '_dis_cap']
 dataset_type = '.csv'
 if __name__ == '__main__':
     name = base_file
     path = []
+
     for i in range(len(feature_type)):
         path.append('D:\\code\\Python\\EE5003\\data\\NASA\\' + name + "\\" + name + feature_type[i] + dataset_type)
-
     line = np.array(pd.read_csv(path[0], encoding='utf-8', header=None))
     line = line[1:, :]
     large = np.max(line[:, 0])
@@ -44,7 +44,7 @@ if __name__ == '__main__':
         line = np.array(pd.read_csv(path[i], encoding='utf-8', header=None))
         line = line[1:, :]
         if i == len(path)-1:
-            line = line/2
+            line = line/1.1
             print(" ")
         else:
             large = np.max(line[:, 0])
@@ -55,16 +55,16 @@ if __name__ == '__main__':
 
 
 
-    # print(data[:,-1])
+    print(data[:, 1])
 
-    train_nums = int (len(data)*0.4)
-    valid_nums = int(len(data)*0.6)
+    train_nums = int (len(data)*0.5)
+    valid_nums = int(len(data)*0.7)
     # print(train_nums)
 
-    input_dim = 11
-    hidden_dim = 20
+    input_dim = 5
+    hidden_dim = 10
     out_dim = 1
-    step_time = 5
+    step_time = 40
 
     train_set = []
     for i in range(train_nums-step_time):
@@ -144,18 +144,18 @@ if __name__ == '__main__':
     plt.legend(("real","pred"))
     plt.show()
 
-    curr_best_model = torch.load("models/base_model.pth")
-    b_pred_list = []
-    b_real_list = []
-    for (x_test, label_test) in test_set:
-        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
-        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
-        pred = curr_best_model(x_test)
-        b_pred_list.append(pred[:, -1, :].item())
-        b_real_list.append(label_test[:, -1, :].item())
-
-    residuals1 = np.array(b_pred_list) - np.array(b_real_list)
-    rmse1= np.sqrt(np.mean(residuals1 ** 2))
-    if rmse1>rmse:
-        print("new_best")
-        torch.save(best_model, "models/base_model.pth")
+    # curr_best_model = torch.load("models/base_model.pth")
+    # b_pred_list = []
+    # b_real_list = []
+    # for (x_test, label_test) in test_set:
+    #     x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
+    #     label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
+    #     pred = curr_best_model(x_test)
+    #     b_pred_list.append(pred[:, -1, :].item())
+    #     b_real_list.append(label_test[:, -1, :].item())
+    #
+    # residuals1 = np.array(b_pred_list) - np.array(b_real_list)
+    # rmse1= np.sqrt(np.mean(residuals1 ** 2))
+    # if rmse1>rmse:
+    #     print("new_best")
+    #     torch.save(best_model, "models/base_model.pth")

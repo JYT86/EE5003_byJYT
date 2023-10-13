@@ -6,7 +6,7 @@ from torch.nn.utils import clip_grad_norm_
 from train_base_model import Base_model
 import matplotlib.pyplot as plt
 
-base_file = "B0018"
+base_file = "B0005"
 feature_type = ['_1cc_t', '_1cv_t',  '_1cc_cap', '_1cv_cap', '_1cc_e', '_1cv_e', '_1mean_cc_i', '_1a_cvcc_ct', '_1b_cvcc_ct', '_1slope_cccv_ct', '_1start_of_charge_v','_1dis_cap']
 dataset_type = '.csv'
 

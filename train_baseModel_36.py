@@ -38,7 +38,7 @@ if __name__ == '__main__':
     little = np.min(line[:, 0])
     line = (line[:, 0]-little)/(large - little)
     data = line.reshape((-1, 1))
-    # print(data.shape)
+    print(data.shape)
 
     for i in range(1, len(path)):
         line = np.array(pd.read_csv(path[i], encoding='utf-8', header=None))
@@ -144,18 +144,18 @@ if __name__ == '__main__':
     plt.legend(("real","pred"))
     plt.show()
 
-    # curr_best_model = torch.load("models/base_model.pth")
-    # b_pred_list = []
-    # b_real_list = []
-    # for (x_test, label_test) in test_set:
-    #     x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
-    #     label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
-    #     pred = curr_best_model(x_test)
-    #     b_pred_list.append(pred[:, -1, :].item())
-    #     b_real_list.append(label_test[:, -1, :].item())
-    #
-    # residuals1 = np.array(b_pred_list) - np.array(b_real_list)
-    # rmse1= np.sqrt(np.mean(residuals1 ** 2))
-    # if rmse1>rmse:
-    #     print("new_best")
-    #     torch.save(best_model, "models/base_model.pth")
+    curr_best_model = torch.load("models/base_model_36.pth")
+    b_pred_list = []
+    b_real_list = []
+    for (x_test, label_test) in test_set:
+        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
+        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
+        pred = curr_best_model(x_test)
+        b_pred_list.append(pred[:, -1, :].item())
+        b_real_list.append(label_test[:, -1, :].item())
+
+    residuals1 = np.array(b_pred_list) - np.array(b_real_list)
+    rmse1= np.sqrt(np.mean(residuals1 ** 2))
+    if rmse1>rmse:
+        print("new_best")
+        torch.save(best_model, "models/base_model_36.pth")

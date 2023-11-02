@@ -17,13 +17,13 @@ class Base_model(nn.Module):
 
     def forward(self, x):
         out, _ = self.Lstm(x)  #x.shape = (batch_size, seq_len, in_dim)
-        out = self.Linear1(out) #out.shape = (batch_size, seq_len, hid_dim)
+        out1 = self.Linear1(out) #out.shape = (batch_size, seq_len, hid_dim)
         # out = self.Linear2(out)
-        assert(out.shape == (x.shape[0], x.shape[1], self.out_dim))
-        return out
+        assert(out1.shape == (x.shape[0], x.shape[1], self.out_dim))
+        return out1, out
 
 # data load and processing
-base_file = "CS2_36"
+base_file = "CS2_37"
 feature_type = ['_cc_t', '_cc_cap', '_cc_e', '_slope_cccv_ct', '_start_of_charge_v', '_dis_cap']
 dataset_type = '.csv'
 if __name__ == '__main__':
@@ -57,14 +57,14 @@ if __name__ == '__main__':
 
     print(data[:, 1])
 
-    train_nums = int (len(data)*0.5)
+    train_nums = int (len(data)*0.7)
     valid_nums = int(len(data)*0.7)
     # print(train_nums)
 
     input_dim = 5
-    hidden_dim = 10
+    hidden_dim = 6
     out_dim = 1
-    step_time = 40
+    step_time = 25
 
     train_set = []
     for i in range(train_nums-step_time):
@@ -79,7 +79,7 @@ if __name__ == '__main__':
         y_ = data[i: i + step_time, -1]
         validation_set.append((x_, y_))
 
-    model = Base_model(in_dim=input_dim, hidden_dim=hidden_dim, out_dim=out_dim)
+    model = Base_model(in_dim=input_dim, hidden_dim=hidden_dim, out_dim=out_dim).cuda()
     loss = nn.MSELoss()
     optim = optim.Adam(model.parameters(), lr=0.05)
     print(model)
@@ -87,17 +87,17 @@ if __name__ == '__main__':
     best_model = model
     best_accurancy = 100
     for epoch in tqdm(range(100)):
-        for (train_, label_ ) in validation_set:
-            train_ = torch.tensor(train_).float().reshape((-1, step_time, input_dim))
-            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim))
+        for (train_, label_ ) in train_set:
+            train_ = torch.tensor(train_).float().reshape((-1, step_time, input_dim)).cuda()
+            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim)).cuda()
 
             # print(label_.shape)
 
-            out = model(train_)
+            out, _ = model(train_)
             l = loss(out, label_)
 
             model.zero_grad()
-            max_grad_norm = 10
+            max_grad_norm = 5
 
             l.backward()
             clip_grad_norm_(model.parameters(), max_grad_norm)
@@ -106,10 +106,10 @@ if __name__ == '__main__':
 
         #validation
         vl = 0
-        for (valid_, label_) in validation_set:
-            valid_ = torch.tensor(valid_).float().reshape((-1, step_time, input_dim))
-            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim))
-            out = model(valid_)
+        for (valid_, label_) in train_set:
+            valid_ = torch.tensor(valid_).float().reshape((-1, step_time, input_dim)).cuda()
+            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim)).cuda()
+            out, _ = model(valid_)
             vl += loss(out, label_).item()
         if(vl<=best_accurancy):
             best_accurancy = vl
@@ -128,9 +128,9 @@ if __name__ == '__main__':
     pred_list = []
     real_list = []
     for (x_test, label_test) in test_set:
-        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
-        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
-        pred = best_model(x_test)
+        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim)).cuda()
+        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim)).cuda()
+        pred, _ = best_model(x_test)
         pred_list.append(pred[:, -1, :].item())
         real_list.append(label_test[:, -1, :].item())
     # print(len(pred_list))
@@ -144,13 +144,13 @@ if __name__ == '__main__':
     plt.legend(("real","pred"))
     plt.show()
 
-    curr_best_model = torch.load("models/base_model_36.pth")
+    curr_best_model = torch.load("models/base_model_36.pth").cuda()
     b_pred_list = []
     b_real_list = []
     for (x_test, label_test) in test_set:
-        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
-        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
-        pred = curr_best_model(x_test)
+        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim)).cuda()
+        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim)).cuda()
+        pred,_  = curr_best_model(x_test)
         b_pred_list.append(pred[:, -1, :].item())
         b_real_list.append(label_test[:, -1, :].item())
 

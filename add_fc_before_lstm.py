@@ -7,44 +7,46 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.nn.utils import clip_grad_norm_
 class Base_model(nn.Module):
-    def __init__(self, in_dim, hidden_dim, out_dim):
+    def __init__(self, in_dim, in_dim1, hidden_dim, out_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.Lstm = nn.LSTM(in_dim, hidden_dim, batch_first=True, num_layers=1)
-        self.Linear1 = nn.Linear(hidden_dim, out_dim)
+        self.Linear1 = nn.Linear(in_dim, in_dim1)
+        self.Lstm = nn.LSTM(in_dim1, hidden_dim, batch_first=True, num_layers=1)
+        self.Linear2 = nn.Linear(hidden_dim, out_dim)
         # self.Linear2 = nn.Linear(5,out_dim)
         self.out_dim = out_dim
 
     def forward(self, x):
-        out, _ = self.Lstm(x)  #x.shape = (batch_size, seq_len, in_dim)
-        out = self.Linear1(out) #out.shape = (batch_size, seq_len, hid_dim)
+        out = self.Linear1(x)
+        out1, _ = self.Lstm(out)  #x.shape = (batch_size, seq_len, in_dim)
+        out1 = self.Linear2(out1) #out.shape = (batch_size, seq_len, hid_dim)
         # out = self.Linear2(out)
-        assert(out.shape == (x.shape[0], x.shape[1], self.out_dim))
-        return out
+        assert(out1.shape == (x.shape[0], x.shape[1], self.out_dim))
+        return out1, out
 
 # data load and processing
-base_file = "B0007"
-feature_type = ['_1cc_t', '_1cv_t',  '_1cc_cap', '_1cv_cap', '_1cc_e', '_1cv_e', '_1mean_cc_i', '_1a_cvcc_ct', '_1b_cvcc_ct', '_1slope_cccv_ct', '_1start_of_charge_v','_1dis_cap']
+base_file = "CS2_35"
+feature_type = ['_cc_t', '_cc_cap', '_cc_e', '_slope_cccv_ct', '_start_of_charge_v', '_dis_cap']
 dataset_type = '.csv'
 if __name__ == '__main__':
     name = base_file
     path = []
+
     for i in range(len(feature_type)):
         path.append('D:\\code\\Python\\EE5003\\data\\NASA\\' + name + "\\" + name + feature_type[i] + dataset_type)
-
     line = np.array(pd.read_csv(path[0], encoding='utf-8', header=None))
     line = line[1:, :]
     large = np.max(line[:, 0])
     little = np.min(line[:, 0])
     line = (line[:, 0]-little)/(large - little)
     data = line.reshape((-1, 1))
-    # print(data.shape)
+    print(data.shape)
 
     for i in range(1, len(path)):
         line = np.array(pd.read_csv(path[i], encoding='utf-8', header=None))
         line = line[1:, :]
         if i == len(path)-1:
-            line = line/2
+            line = line/1.1
             print(" ")
         else:
             large = np.max(line[:, 0])
@@ -55,16 +57,17 @@ if __name__ == '__main__':
 
 
 
-    # print(data[:,-1])
+    print(data[:, 1])
 
-    train_nums = int(len(data)*0.5)
-    valid_nums = int(len(data)*0.5)
+    train_nums = int(len(data)*0.7)
+    valid_nums = int(len(data)*0.7)
     # print(train_nums)
 
-    input_dim = 11
-    hidden_dim = 20
+    input_dim = 5
+    input_dim1 = 3
+    hidden_dim = 4
     out_dim = 1
-    step_time = 12
+    step_time = 30
 
     train_set = []
     for i in range(train_nums-step_time):
@@ -79,7 +82,7 @@ if __name__ == '__main__':
         y_ = data[i: i + step_time, -1]
         validation_set.append((x_, y_))
 
-    model = Base_model(in_dim=input_dim, hidden_dim=hidden_dim, out_dim=out_dim)
+    model = Base_model(in_dim=input_dim, in_dim1=input_dim1,hidden_dim=hidden_dim, out_dim=out_dim).cuda()
     loss = nn.MSELoss()
     optim = optim.Adam(model.parameters(), lr=0.05)
     print(model)
@@ -88,12 +91,12 @@ if __name__ == '__main__':
     best_accurancy = 100
     for epoch in tqdm(range(100)):
         for (train_, label_ ) in train_set:
-            train_ = torch.tensor(train_).float().reshape((-1, step_time, input_dim))
-            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim))
+            train_ = torch.tensor(train_).float().reshape((-1, step_time, input_dim)).cuda()
+            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim)).cuda()
 
             # print(label_.shape)
 
-            out = model(train_)
+            out, _ = model(train_)
             l = loss(out, label_)
 
             model.zero_grad()
@@ -107,9 +110,9 @@ if __name__ == '__main__':
         #validation
         vl = 0
         for (valid_, label_) in train_set:
-            valid_ = torch.tensor(valid_).float().reshape((-1, step_time, input_dim))
-            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim))
-            out = model(valid_)
+            valid_ = torch.tensor(valid_).float().reshape((-1, step_time, input_dim)).cuda()
+            label_ = torch.tensor(label_).float().reshape((-1, step_time, out_dim)).cuda()
+            out, _ = model(valid_)
             vl += loss(out, label_).item()
         if(vl<=best_accurancy):
             best_accurancy = vl
@@ -128,9 +131,9 @@ if __name__ == '__main__':
     pred_list = []
     real_list = []
     for (x_test, label_test) in test_set:
-        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
-        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
-        pred = best_model(x_test)
+        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim)).cuda()
+        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim)).cuda()
+        pred, _ = best_model(x_test)
         pred_list.append(pred[:, -1, :].item())
         real_list.append(label_test[:, -1, :].item())
     # print(len(pred_list))
@@ -144,13 +147,13 @@ if __name__ == '__main__':
     plt.legend(("real","pred"))
     plt.show()
 
-    curr_best_model = torch.load("models/base_model.pth")
+    curr_best_model = torch.load("models/base_model_36.pth").cuda()
     b_pred_list = []
     b_real_list = []
     for (x_test, label_test) in test_set:
-        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim))
-        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim))
-        pred = curr_best_model(x_test)
+        x_test = torch.tensor(x_test).float().reshape((-1, step_time, input_dim)).cuda()
+        label_test = torch.tensor(label_test).float().reshape((-1, step_time, out_dim)).cuda()
+        pred,_  = curr_best_model(x_test)
         b_pred_list.append(pred[:, -1, :].item())
         b_real_list.append(label_test[:, -1, :].item())
 
@@ -158,4 +161,5 @@ if __name__ == '__main__':
     rmse1= np.sqrt(np.mean(residuals1 ** 2))
     if rmse1>rmse:
         print("new_best")
-        torch.save(best_model, "models/base_model.pth")
+        torch.save(best_model, "models/base_model_36.pth")
+
